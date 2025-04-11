@@ -119,26 +119,14 @@ namespace System.IO.Compression
         /// </param>
         /// <exception cref="ArgumentException">If a Unicode encoding other than UTF-8 is specified for the <code>entryNameEncoding</code>.</exception>
         public ZipArchive(Stream stream, ZipArchiveMode mode, bool leaveOpen, Encoding? entryNameEncoding)
-            : this(mode, leaveOpen, entryNameEncoding, backingStream: null, archiveStream: null)
+            : this(mode, leaveOpen, entryNameEncoding,
+                  backingStream: DecideBackingStream(mode, ref stream, out bool disposeStreamOnFailure),
+                  archiveStream: DecideArchiveStream(mode, stream))
         {
             ArgumentNullException.ThrowIfNull(stream);
 
-            Stream? extraTempStream = null;
-
             try
             {
-                _backingStream = null;
-
-                if (ValidateMode(mode, stream))
-                {
-                    _backingStream = stream;
-                    extraTempStream = stream = new MemoryStream();
-                    _backingStream.CopyTo(stream);
-                    stream.Seek(0, SeekOrigin.Begin);
-                }
-
-                _archiveStream = DecideArchiveStream(mode, stream);
-
                 switch (mode)
                 {
                     case ZipArchiveMode.Create:
@@ -165,7 +153,8 @@ namespace System.IO.Compression
             }
             catch
             {
-                extraTempStream?.Dispose();
+                if (disposeStreamOnFailure)
+                    stream.Dispose();
                 throw;
             }
         }
@@ -173,10 +162,10 @@ namespace System.IO.Compression
         /// Helper constructor that initializes some of the essential ZipArchive
         /// information that other constructors initialize the same way.
         /// Validations, checks and entry collection need to be done outside this constructor.
-        private ZipArchive(ZipArchiveMode mode, bool leaveOpen, Encoding? entryNameEncoding, Stream? backingStream, Stream? archiveStream)
+        private ZipArchive(ZipArchiveMode mode, bool leaveOpen, Encoding? entryNameEncoding, Stream? backingStream, Stream archiveStream)
         {
             _backingStream = backingStream;
-            _archiveStream = archiveStream!; // If null, this needs to be set by the calling constructor
+            _archiveStream = archiveStream;
             _mode = mode;
             EntryNameAndCommentEncoding = entryNameEncoding;
             _archiveStreamOwner = null;
@@ -233,6 +222,31 @@ namespace System.IO.Compression
             mode == ZipArchiveMode.Create && !stream.CanSeek ?
                 new PositionPreservingWriteOnlyStreamWrapper(stream) :
                 stream;
+
+        private static Stream? DecideBackingStream(ZipArchiveMode mode, ref Stream stream, out bool disposeStreamOnFailure)
+        {
+            Stream? extraTempStream = null;
+            Stream? backingStream = null;
+            disposeStreamOnFailure = false;
+            try
+            {
+                if (ValidateMode(mode, stream))
+                {
+                    backingStream = stream;
+                    extraTempStream = stream = new MemoryStream();
+                    backingStream.CopyTo(stream);
+                    stream.Seek(0, SeekOrigin.Begin);
+                    disposeStreamOnFailure = true;
+                }
+
+                return backingStream;
+            }
+            catch
+            {
+                extraTempStream?.Dispose();
+                throw;
+            }
+        }
 
         private void CheckIfEntriesAreOpenable()
         {
