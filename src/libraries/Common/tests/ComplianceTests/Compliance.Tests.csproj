@@ -16,9 +16,24 @@
     <Compile Include="GB18030\Tests\FileInfoTests.cs" />
     <Compile Include="GB18030\Tests\FileTestBase.cs" />
     <Compile Include="GB18030\Tests\FileTests.cs" />
+    <Compile Include="GB18030\Tests\RegexTests.cs" />
     <Compile Include="GB18030\Tests\StringTests.cs" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETCoreApp'">
+    <Compile Include="$(CoreLibSharedDir)System\Diagnostics\CodeAnalysis\StringSyntaxAttribute.cs" />
+    <Compile Include="D:\runtime\src\libraries\System.Text.RegularExpressions\tests\FunctionalTests\RegexGeneratorHelper.netfx.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)'">
+    <Compile Include="D:\runtime\src\libraries\System.Text.RegularExpressions\tests\FunctionalTests\RegexGeneratorHelper.netcoreapp.cs" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="$(MicrosoftCodeAnalysisVersion)" PrivateAssets="all" />
+    <ProjectReference Include="D:\runtime\src\libraries\System.Text.RegularExpressions\gen\System.Text.RegularExpressions.Generator.csproj"
+                      SetTargetFramework="TargetFramework=netstandard2.0"
+                      OutputItemType="Analyzer"
+                      ReferenceOutputAssembly="true" />
+  </ItemGroup>
+  
   <ItemGroup>
     <None Include="GB18030\Level3+Amendment_Test_Data_for_Mid_to_High_Volume_cases.txt">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
