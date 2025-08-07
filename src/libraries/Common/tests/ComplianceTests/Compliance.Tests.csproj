@@ -22,13 +22,13 @@
 
   <ItemGroup Condition="'$(TargetFrameworkIdentifier)' != '.NETCoreApp'">
     <Compile Include="$(CoreLibSharedDir)System\Diagnostics\CodeAnalysis\StringSyntaxAttribute.cs" />
-    <Compile Include="D:\runtime\src\libraries\System.Text.RegularExpressions\tests\FunctionalTests\RegexGeneratorHelper.netfx.cs" />
+    <Compile Include="$(LibrariesProjectRoot)System.Text.RegularExpressions\tests\FunctionalTests\RegexGeneratorHelper.netfx.cs" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' == '$(NetCoreAppCurrent)'">
-    <Compile Include="D:\runtime\src\libraries\System.Text.RegularExpressions\tests\FunctionalTests\RegexGeneratorHelper.netcoreapp.cs" />
+    <Compile Include="$(LibrariesProjectRoot)System.Text.RegularExpressions\tests\FunctionalTests\RegexGeneratorHelper.netcoreapp.cs" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" Version="$(MicrosoftCodeAnalysisVersion)" PrivateAssets="all" />
-    <ProjectReference Include="D:\runtime\src\libraries\System.Text.RegularExpressions\gen\System.Text.RegularExpressions.Generator.csproj"
+    <ProjectReference Include="$(LibrariesProjectRoot)System.Text.RegularExpressions\gen\System.Text.RegularExpressions.Generator.csproj"
                       SetTargetFramework="TargetFramework=netstandard2.0"
                       OutputItemType="Analyzer"
                       ReferenceOutputAssembly="true" />

@@ -43,6 +43,98 @@ public class RegexTests
         }
     }
 
+    static Dictionary<UnicodeCategory, string> s_UnicodeCategoryRegexMap = new()
+    {
+        { UnicodeCategory.UppercaseLetter, "Lu" },
+        { UnicodeCategory.LowercaseLetter, "Ll" },
+        { UnicodeCategory.TitlecaseLetter, "Lt" },
+        { UnicodeCategory.ModifierLetter, "Lm" },
+        { UnicodeCategory.OtherLetter, "Lo" },
+
+        { UnicodeCategory.NonSpacingMark, "Mn" },
+        { UnicodeCategory.SpacingCombiningMark, "Mc" },
+        { UnicodeCategory.EnclosingMark, "Me" },
+
+        { UnicodeCategory.DecimalDigitNumber, "Nd" },
+        { UnicodeCategory.LetterNumber, "Nl" },
+        { UnicodeCategory.OtherNumber, "No" },
+
+        { UnicodeCategory.ConnectorPunctuation, "Pc" },
+        { UnicodeCategory.DashPunctuation, "Pd" },
+        { UnicodeCategory.OpenPunctuation, "Ps" },
+        { UnicodeCategory.ClosePunctuation, "Pe" },
+        { UnicodeCategory.InitialQuotePunctuation, "Pi" },
+        { UnicodeCategory.FinalQuotePunctuation, "Pf" },
+        { UnicodeCategory.OtherPunctuation, "Po" },
+
+        { UnicodeCategory.MathSymbol, "Sm" },
+        { UnicodeCategory.CurrencySymbol, "Sc" },
+        { UnicodeCategory.ModifierSymbol, "Sk" },
+        { UnicodeCategory.OtherSymbol, "So" },
+
+        { UnicodeCategory.SpaceSeparator, "Zs" },
+        { UnicodeCategory.LineSeparator, "Zl" },
+        { UnicodeCategory.ParagraphSeparator, "Zp" },
+
+        { UnicodeCategory.Control, "Cc" },
+        { UnicodeCategory.Format, "Cf" },
+        { UnicodeCategory.Surrogate, "Cs" },
+        { UnicodeCategory.PrivateUse, "Co" },
+        { UnicodeCategory.OtherNotAssigned, "Cn" },
+    };
+
+    public static IEnumerable<object[]> UnicodeCategoriesInclusionsExpected_MemberData()
+    {
+        foreach (RegexEngine engine in AvailableEngines)
+        {
+            // https://learn.microsoft.com/dotnet/standard/base-types/character-classes-in-regular-expressions#supported-unicode-general-categories
+
+            yield return new object[] { engine, "L", new[] { UnicodeCategory.UppercaseLetter, UnicodeCategory.LowercaseLetter, UnicodeCategory.TitlecaseLetter, UnicodeCategory.ModifierLetter, UnicodeCategory.OtherLetter } };
+            yield return new object[] { engine, "Lu", new[] { UnicodeCategory.UppercaseLetter } };
+            yield return new object[] { engine, "Ll", new[] { UnicodeCategory.LowercaseLetter } };
+            yield return new object[] { engine, "Lt", new[] { UnicodeCategory.TitlecaseLetter } };
+            yield return new object[] { engine, "Lm", new[] { UnicodeCategory.ModifierLetter } };
+            yield return new object[] { engine, "Lo", new[] { UnicodeCategory.OtherLetter } };
+
+            yield return new object[] { engine, "M", new[] { UnicodeCategory.NonSpacingMark, UnicodeCategory.SpacingCombiningMark, UnicodeCategory.EnclosingMark } };
+            yield return new object[] { engine, "Mn", new[] { UnicodeCategory.NonSpacingMark } };
+            yield return new object[] { engine, "Mc", new[] { UnicodeCategory.SpacingCombiningMark } };
+            yield return new object[] { engine, "Me", new[] { UnicodeCategory.EnclosingMark } };
+
+            yield return new object[] { engine, "N", new[] { UnicodeCategory.DecimalDigitNumber, UnicodeCategory.LetterNumber, UnicodeCategory.OtherNumber } };
+            yield return new object[] { engine, "Nd", new[] { UnicodeCategory.DecimalDigitNumber } };
+            yield return new object[] { engine, "Nl", new[] { UnicodeCategory.LetterNumber } };
+            yield return new object[] { engine, "No", new[] { UnicodeCategory.OtherNumber } };
+
+            yield return new object[] { engine, "P", new[] { UnicodeCategory.ConnectorPunctuation, UnicodeCategory.DashPunctuation, UnicodeCategory.OpenPunctuation, UnicodeCategory.ClosePunctuation, UnicodeCategory.InitialQuotePunctuation, UnicodeCategory.FinalQuotePunctuation, UnicodeCategory.OtherPunctuation } };
+            yield return new object[] { engine, "Pc", new[] { UnicodeCategory.ConnectorPunctuation } };
+            yield return new object[] { engine, "Pd", new[] { UnicodeCategory.DashPunctuation } };
+            yield return new object[] { engine, "Ps", new[] { UnicodeCategory.OpenPunctuation } };
+            yield return new object[] { engine, "Pe", new[] { UnicodeCategory.ClosePunctuation } };
+            yield return new object[] { engine, "Pi", new[] { UnicodeCategory.InitialQuotePunctuation } };
+            yield return new object[] { engine, "Pf", new[] { UnicodeCategory.FinalQuotePunctuation } };
+            yield return new object[] { engine, "Po", new[] { UnicodeCategory.OtherPunctuation } };
+
+            yield return new object[] { engine, "S", new[] { UnicodeCategory.MathSymbol, UnicodeCategory.CurrencySymbol, UnicodeCategory.ModifierSymbol, UnicodeCategory.OtherSymbol } };
+            yield return new object[] { engine, "Sm", new[] { UnicodeCategory.MathSymbol } };
+            yield return new object[] { engine, "Sc", new[] { UnicodeCategory.CurrencySymbol } };
+            yield return new object[] { engine, "Sk", new[] { UnicodeCategory.ModifierSymbol } };
+            yield return new object[] { engine, "So", new[] { UnicodeCategory.OtherSymbol } };
+
+            yield return new object[] { engine, "Z", new[] { UnicodeCategory.SpaceSeparator, UnicodeCategory.LineSeparator, UnicodeCategory.ParagraphSeparator } };
+            yield return new object[] { engine, "Zs", new[] { UnicodeCategory.SpaceSeparator } };
+            yield return new object[] { engine, "Zl", new[] { UnicodeCategory.LineSeparator } };
+            yield return new object[] { engine, "Zp", new[] { UnicodeCategory.ParagraphSeparator } };
+
+            yield return new object[] { engine, "C", new[] { UnicodeCategory.Control, UnicodeCategory.Format, UnicodeCategory.Surrogate, UnicodeCategory.PrivateUse, UnicodeCategory.OtherNotAssigned } };
+            yield return new object[] { engine, "Cc", new[] { UnicodeCategory.Control } };
+            yield return new object[] { engine, "Cf", new[] { UnicodeCategory.Format } };
+            yield return new object[] { engine, "Cs", new[] { UnicodeCategory.Surrogate } };
+            yield return new object[] { engine, "Co", new[] { UnicodeCategory.PrivateUse } };
+            yield return new object[] { engine, "Cn", new[] { UnicodeCategory.OtherNotAssigned } };
+        }
+    }
+
     public static IEnumerable<object[]> NamedBlocksInclusionsExpected_MemberData()
     {
         foreach (RegexEngine engine in AvailableEngines)
@@ -179,8 +271,10 @@ public class RegexTests
         // Get UC
         UnicodeCategory uc = CharUnicodeInfo.GetUnicodeCategory(element, 0);
 
-        // assert match UC in regex format.
+        // Get regex format for UC
+        string regexFormat = s_UnicodeCategoryRegexMap[uc];
 
+        // assert match UC in regex format.
 
         // assert not match UC in regex format [^\p{UC}].
     }
