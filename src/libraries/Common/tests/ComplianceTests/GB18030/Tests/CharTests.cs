@@ -49,4 +49,6 @@ public class CharTests
             Assert.False(char.IsSurrogatePair(c, c));
         }
     }
+
+    // Add IsLetter and IsDigit.
 }
