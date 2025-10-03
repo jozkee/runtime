@@ -384,6 +384,17 @@ namespace System
         }
 
         /// <summary>
+        /// Calculates the effective offset for a given adjustment rule, including daylight saving time if applicable.
+        /// </summary>
+        /// <param name="rule">The adjustment rule.</param>
+        /// <returns>The combined offset including daylight saving time if the rule has it.</returns>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static TimeSpan GetEffectiveOffset(AdjustmentRule rule)
+        {
+            return rule.BaseUtcOffsetDelta + (rule.HasDaylightSaving ? rule.DaylightDelta : TimeSpan.Zero);
+        }
+
+        /// <summary>
         /// Gets the UTC offset for a given UTC date and time, along with whether it is in daylight saving time and if it is ambiguous.
         /// </summary>
         /// <param name="utcDateTime">The UTC date and time.</param>
@@ -730,7 +741,7 @@ namespace System
                             {
                                 // previous year transition end at the current year transition start, then include last year transition
                                 AddTransition(ref allTransitions, ref transitionCount,
-                                    new TimeTransition(previousRule.DateStart, previousRule.DateEnd, previousRule.BaseUtcOffsetDelta + (previousRule.HasDaylightSaving ? previousRule.DaylightDelta : TimeSpan.Zero), previousRule.HasDaylightSaving));
+                                    new TimeTransition(previousRule.DateStart, previousRule.DateEnd, GetEffectiveOffset(previousRule), previousRule.HasDaylightSaving));
                             }
                         }
                         else
@@ -764,7 +775,7 @@ namespace System
                                         new TimeTransition(
                                                 LocalToUtcDateTime(previousYearStart.Ticks, previousRule),
                                                 SafeCreateDateTimeFromTicks(rule.DateStart.Ticks - 1),
-                                                previousRule.BaseUtcOffsetDelta + (previousRule.HasDaylightSaving ? previousRule.DaylightDelta : TimeSpan.Zero),
+                                                GetEffectiveOffset(previousRule),
                                                 previousRule.HasDaylightSaving));
                                 }
                             }
@@ -788,7 +799,7 @@ namespace System
                                 DateTime previousYearStartUtc = LocalToUtcDateTime(previousYearStart.Ticks, previousRule); // daylight offset is not counted in this start
 
                                 AddTransition(ref allTransitions, ref transitionCount,
-                                    new TimeTransition(previousYearStartUtc, previousEndOfYearUtc, previousRule.BaseUtcOffsetDelta + (previousRule.HasDaylightSaving ? previousRule.DaylightDelta : TimeSpan.Zero), previousRule.HasDaylightSaving));
+                                    new TimeTransition(previousYearStartUtc, previousEndOfYearUtc, GetEffectiveOffset(previousRule), previousRule.HasDaylightSaving));
                             }
                         }
                     }
@@ -812,7 +823,7 @@ namespace System
                 //
 
                 AddTransition(ref allTransitions, ref transitionCount,
-                    new TimeTransition(rule.DateStart, rule.DateEnd, rule.BaseUtcOffsetDelta + (rule.HasDaylightSaving ? rule.DaylightDelta : TimeSpan.Zero), rule.HasDaylightSaving));
+                    new TimeTransition(rule.DateStart, rule.DateEnd, GetEffectiveOffset(rule), rule.HasDaylightSaving));
 
                 //
                 // Ensure covering the whole year by adding transitions if necessary
@@ -840,7 +851,7 @@ namespace System
                             }
 
                             AddTransition(ref allTransitions, ref transitionCount,
-                                new TimeTransition(nextYearRule.DateStart, nextYearRule.DateEnd, nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero), nextYearRule.HasDaylightSaving));
+                                new TimeTransition(nextYearRule.DateStart, nextYearRule.DateEnd, GetEffectiveOffset(nextYearRule), nextYearRule.HasDaylightSaving));
                         }
                         else
                         {
@@ -872,7 +883,7 @@ namespace System
                                     new TimeTransition(
                                             nextYearStartUtc,
                                             LocalToUtcDateTime(nextYearEnd.Ticks, nextYearRule, true, -1),
-                                            nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero),
+                                            GetEffectiveOffset(nextYearRule),
                                             nextYearRule.HasDaylightSaving));
                             }
                             else // nextYearStart > nextYearEnd
@@ -890,7 +901,7 @@ namespace System
                                     // Fill the gap between the previous year transition end and next year transition start
                                     AddTransition(ref allTransitions, ref transitionCount,
                                         // Use previous year rule, daylight included as the year started with the daylight
-                                        new TimeTransition(allTransitions[transitionCount - 1].DateEnd.AddTicks(1), nextBeginningOfYearUtc.AddTicks(-1), rule.BaseUtcOffsetDelta + (rule.HasDaylightSaving ? rule.DaylightDelta : TimeSpan.Zero), rule.HasDaylightSaving));
+                                        new TimeTransition(allTransitions[transitionCount - 1].DateEnd.AddTicks(1), nextBeginningOfYearUtc.AddTicks(-1), GetEffectiveOffset(rule), rule.HasDaylightSaving));
                                 }
 
                                 if (allTransitions[transitionCount - 1].DateEnd < nextYearEndUtc)
@@ -899,7 +910,7 @@ namespace System
                                         new TimeTransition(
                                                 allTransitions[transitionCount - 1].DateEnd.AddTicks(1),
                                                 nextYearEndUtc,
-                                                nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero),
+                                                GetEffectiveOffset(nextYearRule),
                                                 nextYearRule.HasDaylightSaving));
                                 }
                             }
@@ -995,7 +1006,7 @@ namespace System
                                 else
                                 {
                                     AddTransition(ref allTransitions, ref transitionCount,
-                                        new TimeTransition(previousYearRule.DateStart, previousYearRule.DateEnd, previousYearRule.BaseUtcOffsetDelta + (previousYearRule.HasDaylightSaving ? previousYearRule.DaylightDelta : TimeSpan.Zero), previousYearRule.HasDaylightSaving));
+                                        new TimeTransition(previousYearRule.DateStart, previousYearRule.DateEnd, GetEffectiveOffset(previousYearRule), previousYearRule.HasDaylightSaving));
                                 }
                             }
                             else
@@ -1021,7 +1032,7 @@ namespace System
                                         new TimeTransition(
                                                 LocalToUtcDateTime(previousYearStart.Ticks, previousYearRule),
                                                 SafeCreateDateTimeFromTicks(previousYearEndUtc.Ticks - 1),
-                                                previousYearRule.BaseUtcOffsetDelta + (previousYearRule.HasDaylightSaving ? previousYearRule.DaylightDelta : TimeSpan.Zero),
+                                                GetEffectiveOffset(previousYearRule),
                                                 previousYearRule.HasDaylightSaving));
 
                                     if (previousYearEndUtc.Ticks < startOfCurrentYearUtc.Ticks - 1)
@@ -1044,7 +1055,7 @@ namespace System
                                         new TimeTransition(
                                             previousYearStartUtc,
                                             SafeCreateDateTimeFromTicks(startOfCurrentYearUtc.Ticks - 1),
-                                            previousYearRule.BaseUtcOffsetDelta + (previousYearRule.HasDaylightSaving ? previousYearRule.DaylightDelta : TimeSpan.Zero),
+                                            GetEffectiveOffset(previousYearRule),
                                             previousYearRule.HasDaylightSaving));
                                 }
                             }
@@ -1073,7 +1084,7 @@ namespace System
                     //
 
                     AddTransition(ref allTransitions, ref transitionCount,
-                        new TimeTransition(utcStart, utcEnd, rule.BaseUtcOffsetDelta + (rule.HasDaylightSaving ? rule.DaylightDelta : TimeSpan.Zero), rule.HasDaylightSaving));
+                        new TimeTransition(utcStart, utcEnd, GetEffectiveOffset(rule), rule.HasDaylightSaving));
 
                     //
                     // Check if we still need to cover the rest of the year
@@ -1113,7 +1124,7 @@ namespace System
                                 }
 
                                 AddTransition(ref allTransitions, ref transitionCount,
-                                    new TimeTransition(nextYearRule.DateStart, nextYearRule.DateEnd, nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero), nextYearRule.HasDaylightSaving));
+                                    new TimeTransition(nextYearRule.DateStart, nextYearRule.DateEnd, GetEffectiveOffset(nextYearRule), nextYearRule.HasDaylightSaving));
                             }
                             else
                             {
@@ -1141,7 +1152,7 @@ namespace System
                                     }
 
                                     AddTransition(ref allTransitions, ref transitionCount,
-                                        new TimeTransition(nextYearStartUtc, nextYearEndUtc, nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero), nextYearRule.HasDaylightSaving));
+                                        new TimeTransition(nextYearStartUtc, nextYearEndUtc, GetEffectiveOffset(nextYearRule), nextYearRule.HasDaylightSaving));
                                 }
                                 else // nextYearStart > nextYearEnd
                                 {
@@ -1152,7 +1163,7 @@ namespace System
                                     if (endOfCurrentYearUtc < nextYearEndUtc)
                                     {
                                         AddTransition(ref allTransitions, ref transitionCount,
-                                            new TimeTransition(endOfCurrentYearUtc.AddTicks(1), nextYearEndUtc, nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero), nextYearRule.HasDaylightSaving));
+                                            new TimeTransition(endOfCurrentYearUtc.AddTicks(1), nextYearEndUtc, GetEffectiveOffset(nextYearRule), nextYearRule.HasDaylightSaving));
                                     }
                                 }
                             }
@@ -1200,7 +1211,7 @@ namespace System
                                 }
 
                                 AddTransition(ref allTransitions, ref transitionCount,
-                                    new TimeTransition(previousYearRule.DateStart, previousYearRule.DateEnd, previousYearRule.BaseUtcOffsetDelta + (previousYearRule.HasDaylightSaving ? previousYearRule.DaylightDelta : TimeSpan.Zero), previousYearRule.HasDaylightSaving));
+                                    new TimeTransition(previousYearRule.DateStart, previousYearRule.DateEnd, GetEffectiveOffset(previousYearRule), previousYearRule.HasDaylightSaving));
                             }
                             else
                             {
@@ -1230,7 +1241,7 @@ namespace System
                                     {
 
                                         AddTransition(ref allTransitions, ref transitionCount,
-                                            new TimeTransition(previousYearStartUtc, previousYearEndUtc, previousYearRule.BaseUtcOffsetDelta + (previousYearRule.HasDaylightSaving ? previousYearRule.DaylightDelta : TimeSpan.Zero), previousYearRule.HasDaylightSaving));
+                                            new TimeTransition(previousYearStartUtc, previousYearEndUtc, GetEffectiveOffset(previousYearRule), previousYearRule.HasDaylightSaving));
                                     }
                                 }
                                 else // previousYearStart > previousYearEnd
@@ -1246,7 +1257,7 @@ namespace System
                                             new TimeTransition(
                                                     previousYearStartUtc,
                                                     startOfCurrentYearUtc.AddTicks(-1),
-                                                    previousYearRule.BaseUtcOffsetDelta + (previousYearRule.HasDaylightSaving ? previousYearRule.DaylightDelta : TimeSpan.Zero),
+                                                    GetEffectiveOffset(previousYearRule),
                                                     previousYearRule.HasDaylightSaving));
                                     }
                                 }
@@ -1272,13 +1283,13 @@ namespace System
                     DateTime endOfCurrentYearUtc = SafeCreateDateTimeFromTicks(endOfCurrentYearUtcTicks, DateTimeKind.Utc);
 
                     AddTransition(ref allTransitions, ref transitionCount,
-                        new TimeTransition(startOfCurrentYearUtc, utcEnd, rule.BaseUtcOffsetDelta + (rule.HasDaylightSaving ? rule.DaylightDelta : TimeSpan.Zero), rule.HasDaylightSaving));
+                        new TimeTransition(startOfCurrentYearUtc, utcEnd, GetEffectiveOffset(rule), rule.HasDaylightSaving));
 
                     AddTransition(ref allTransitions, ref transitionCount,
                         new TimeTransition(SafeCreateDateTimeFromTicks(utcEnd.Ticks + 1), SafeCreateDateTimeFromTicks(utcStart.Ticks - 1), rule.BaseUtcOffsetDelta, false));
 
                     AddTransition(ref allTransitions, ref transitionCount,
-                        new TimeTransition(utcStart, endOfCurrentYearUtc, rule.BaseUtcOffsetDelta + (rule.HasDaylightSaving ? rule.DaylightDelta : TimeSpan.Zero), rule.HasDaylightSaving));
+                        new TimeTransition(utcStart, endOfCurrentYearUtc, GetEffectiveOffset(rule), rule.HasDaylightSaving));
 
                     //
                     // Check if we need to add more transitions to cover the the end of the year in Utc time. We already know we are covering the end of the year in local time.
@@ -1316,7 +1327,7 @@ namespace System
                                             new TimeTransition(
                                                     endOfCurrentYearUtc.AddTicks(1),
                                                     nextYearRule.DateEnd,
-                                                    nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero),
+                                                    GetEffectiveOffset(nextYearRule),
                                                     nextYearRule.HasDaylightSaving));
                                     }
                                 }
@@ -1346,7 +1357,7 @@ namespace System
                                     }
 
                                     AddTransition(ref allTransitions, ref transitionCount,
-                                        new TimeTransition(nextYearStartUtc, nextYearEndUtc, nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero), nextYearRule.HasDaylightSaving));
+                                        new TimeTransition(nextYearStartUtc, nextYearEndUtc, GetEffectiveOffset(nextYearRule), nextYearRule.HasDaylightSaving));
                                 }
                                 else
                                 {
@@ -1357,7 +1368,7 @@ namespace System
                                     if (endOfCurrentYearUtc < nextYearEndUtc)
                                     {
                                         AddTransition(ref allTransitions, ref transitionCount,
-                                            new TimeTransition(endOfCurrentYearUtc.AddTicks(1), nextYearEndUtc, nextYearRule.BaseUtcOffsetDelta + (nextYearRule.HasDaylightSaving ? nextYearRule.DaylightDelta : TimeSpan.Zero), nextYearRule.HasDaylightSaving));
+                                            new TimeTransition(endOfCurrentYearUtc.AddTicks(1), nextYearEndUtc, GetEffectiveOffset(nextYearRule), nextYearRule.HasDaylightSaving));
                                     }
                                 }
                             }
