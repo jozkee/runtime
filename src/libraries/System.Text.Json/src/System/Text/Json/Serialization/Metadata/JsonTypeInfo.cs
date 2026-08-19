@@ -310,14 +310,14 @@ namespace System.Text.Json.Serialization.Metadata
             {
                 VerifyMutable();
 
-                if (value != null)
+                if (value is not null)
                 {
                     if (Kind == JsonTypeInfoKind.None)
                     {
                         ThrowHelper.ThrowInvalidOperationException_JsonTypeInfoOperationNotPossibleForKind(Kind);
                     }
 
-                    if (value.DeclaringTypeInfo != null && value.DeclaringTypeInfo != this)
+                    if (value.DeclaringTypeInfo is not null && value.DeclaringTypeInfo != this)
                     {
                         ThrowHelper.ThrowArgumentException_JsonPolymorphismOptionsAssociatedWithDifferentJsonTypeInfo(nameof(value));
                     }
@@ -993,7 +993,7 @@ namespace System.Text.Json.Serialization.Metadata
 
             PropertyInfoForTypeInfo.Configure();
 
-            if (PolymorphismOptions != null)
+            if (PolymorphismOptions is not null)
             {
                 // This needs to be done before ConfigureProperties() is called
                 // JsonPropertyInfo.Configure() must have this value available in order to detect Polymoprhic + cyclic class case
@@ -1275,7 +1275,7 @@ namespace System.Text.Json.Serialization.Metadata
                 return;
             }
 
-            if (_properties != null)
+            if (_properties is not null)
             {
                 foreach (JsonPropertyInfo property in _properties)
                 {
@@ -1540,7 +1540,7 @@ namespace System.Text.Json.Serialization.Metadata
                         ThrowHelper.ThrowInvalidOperationException_ExtensionDataConflictsWithUnmappedMemberHandling(Type, property);
                     }
 
-                    if (ExtensionDataProperty != null)
+                    if (ExtensionDataProperty is not null)
                     {
                         ThrowHelper.ThrowInvalidOperationException_SerializationDuplicateTypeAttribute(Type, typeof(JsonExtensionDataAttribute));
                     }

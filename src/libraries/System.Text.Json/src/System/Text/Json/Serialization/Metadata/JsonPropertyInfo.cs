@@ -206,7 +206,7 @@ namespace System.Text.Json.Serialization.Metadata
             {
                 VerifyMutable();
 
-                if (value != null)
+                if (value is not null)
                 {
                     if (!JsonSerializer.IsValidCreationHandlingValue(value.Value))
                     {
@@ -493,7 +493,7 @@ namespace System.Text.Json.Serialization.Metadata
 
         private void DetermineIgnoreCondition()
         {
-            if (_ignoreCondition != null)
+            if (_ignoreCondition is not null)
             {
                 // Do not apply global policy if already configured on the property level.
                 return;
@@ -530,7 +530,7 @@ namespace System.Text.Json.Serialization.Metadata
             CanDeserialize = HasSetter;
 
             Debug.Assert(MemberType is 0 or MemberTypes.Field or MemberTypes.Property);
-            if (MemberType == 0 || _ignoreCondition != null)
+            if (MemberType == 0 || _ignoreCondition is not null)
             {
                 // No policy to be applied if either:
                 // 1. JsonPropertyInfo is a custom instance (not generated via reflection or sourcegen).
@@ -542,7 +542,7 @@ namespace System.Text.Json.Serialization.Metadata
             if ((EffectiveConverter.ConverterStrategy & (ConverterStrategy.Enumerable | ConverterStrategy.Dictionary)) != 0)
             {
                 // Properties of collections types that only have setters are not supported.
-                if (Get == null && Set != null && !_isUserSpecifiedSetter)
+                if (Get is null && Set is not null && !_isUserSpecifiedSetter)
                 {
                     CanDeserialize = false;
                 }
@@ -551,7 +551,7 @@ namespace System.Text.Json.Serialization.Metadata
             {
                 // For read-only properties of non-collection types, apply IgnoreReadOnlyProperties/Fields policy,
                 // unless a `ShouldSerialize` predicate has been explicitly applied by the user (null or non-null).
-                if (Get != null && Set == null && IgnoreReadOnlyMember && !_isUserSpecifiedShouldSerialize)
+                if (Get is not null && Set is null && IgnoreReadOnlyMember && !_isUserSpecifiedShouldSerialize)
                 {
                     CanSerialize = false;
                 }
@@ -567,7 +567,7 @@ namespace System.Text.Json.Serialization.Metadata
 
             JsonNumberHandling? declaringTypeNumberHandling = DeclaringTypeInfo.NumberHandling;
 
-            if (declaringTypeNumberHandling != null && declaringTypeNumberHandling != JsonNumberHandling.Strict && !EffectiveConverter.IsInternalConverter)
+            if (declaringTypeNumberHandling is not null && declaringTypeNumberHandling != JsonNumberHandling.Strict && !EffectiveConverter.IsInternalConverter)
             {
                 ThrowHelper.ThrowInvalidOperationException_NumberHandlingOnPropertyInvalid(this);
             }
@@ -622,7 +622,7 @@ namespace System.Text.Json.Serialization.Metadata
             Debug.Assert(!IsConfigured, "Should not be called post-configuration.");
 
             JsonObjectCreationHandling effectiveObjectCreationHandling = JsonObjectCreationHandling.Replace;
-            if (ObjectCreationHandling == null)
+            if (ObjectCreationHandling is null)
             {
                 // Consult type-level configuration, then global configuration.
                 // Ignore global configuration if we're using a parameterized constructor.
@@ -635,10 +635,10 @@ namespace System.Text.Json.Serialization.Metadata
                 bool canPopulate =
                     preferredCreationHandling == JsonObjectCreationHandling.Populate &&
                     EffectiveConverter.CanPopulate &&
-                    Get != null &&
-                    (!PropertyType.IsValueType || Set != null) &&
+                    Get is not null &&
+                    (!PropertyType.IsValueType || Set is not null) &&
                     !DeclaringTypeInfo.SupportsPolymorphicDeserialization &&
-                    !(Set == null && IgnoreReadOnlyMember);
+                    !(Set is null && IgnoreReadOnlyMember);
 
                 effectiveObjectCreationHandling = canPopulate ? JsonObjectCreationHandling.Populate : JsonObjectCreationHandling.Replace;
             }
@@ -649,12 +649,12 @@ namespace System.Text.Json.Serialization.Metadata
                     ThrowHelper.ThrowInvalidOperationException_ObjectCreationHandlingPopulateNotSupportedByConverter(this);
                 }
 
-                if (Get == null)
+                if (Get is null)
                 {
                     ThrowHelper.ThrowInvalidOperationException_ObjectCreationHandlingPropertyMustHaveAGetter(this);
                 }
 
-                if (PropertyType.IsValueType && Set == null)
+                if (PropertyType.IsValueType && Set is null)
                 {
                     ThrowHelper.ThrowInvalidOperationException_ObjectCreationHandlingPropertyValueTypeMustHaveASetter(this);
                 }
@@ -666,7 +666,7 @@ namespace System.Text.Json.Serialization.Metadata
                     ThrowHelper.ThrowInvalidOperationException_ObjectCreationHandlingPropertyCannotAllowPolymorphicDeserialization(this);
                 }
 
-                if (Set == null && IgnoreReadOnlyMember)
+                if (Set is null && IgnoreReadOnlyMember)
                 {
                     ThrowHelper.ThrowInvalidOperationException_ObjectCreationHandlingPropertyCannotAllowReadOnlyMember(this);
                 }
@@ -968,8 +968,8 @@ namespace System.Text.Json.Serialization.Metadata
             Debug.Assert(!state.Current.IsPopulating, "We've called TryGetPrePopulatedValue more than once");
             object? value = Get!(state.Parent.ReturnValue);
             state.Current.ReturnValue = value;
-            state.Current.IsPopulating = value != null;
-            return value != null;
+            state.Current.IsPopulating = value is not null;
+            return value is not null;
         }
 
         internal JsonTypeInfo JsonTypeInfo
