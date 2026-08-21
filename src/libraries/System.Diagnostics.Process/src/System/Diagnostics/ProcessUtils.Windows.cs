@@ -21,6 +21,104 @@ namespace System.Diagnostics
             return File.Exists(fullPath);
         }
 
+        internal static string? ResolveExecutablePath(string fileName)
+        {
+            string[] extensions = GetPathExtensions();
+
+            // A path that contains a directory component (or is rooted) is resolved relative to the
+            // current directory; PATH is not searched.
+            if (fileName.AsSpan().IndexOfAny('\\', '/') >= 0 || Path.IsPathRooted(fileName))
+            {
+                return ProbeWithExtensions(Path.GetFullPath(fileName), extensions);
+            }
+
+            // A bare file name is resolved using the same order CreateProcess uses: the executable's
+            // own directory, then the current directory, then each directory listed in PATH.
+            string? processPath = Environment.ProcessPath;
+            if (processPath != null)
+            {
+                try
+                {
+                    string? exeDirMatch = ProbeWithExtensions(Path.Combine(Path.GetDirectoryName(processPath)!, fileName), extensions);
+                    if (exeDirMatch is not null)
+                    {
+                        return exeDirMatch;
+                    }
+                }
+                catch (ArgumentException) { } // ignore any errors in data that may come from the exe path
+            }
+
+            string? match = ProbeWithExtensions(Path.Combine(Directory.GetCurrentDirectory(), fileName), extensions);
+            if (match is not null)
+            {
+                return match;
+            }
+
+            string? pathEnvVar = Environment.GetEnvironmentVariable("PATH");
+            if (pathEnvVar is not null)
+            {
+                StringParser pathParser = new(pathEnvVar, Path.PathSeparator, skipEmpty: true);
+                while (pathParser.MoveNext())
+                {
+                    string subPath = pathParser.ExtractCurrent();
+                    match = ProbeWithExtensions(Path.Combine(subPath, fileName), extensions);
+                    if (match is not null)
+                    {
+                        return match;
+                    }
+                }
+            }
+
+            return null;
+        }
+
+        private static string? ProbeWithExtensions(string fullPath, string[] extensions)
+        {
+            // If the name already ends with a known executable extension (one listed in PATHEXT),
+            // only an exact match is considered. Otherwise the name is not launchable on its own, so
+            // each PATHEXT extension is appended in turn. This matches how CreateProcess and common
+            // 'which' tools resolve names such as "python3.11" (whose ".11" is not a PATHEXT entry).
+            if (EndsWithPathExtension(fullPath, extensions))
+            {
+                return File.Exists(fullPath) ? Path.GetFullPath(fullPath) : null;
+            }
+
+            foreach (string extension in extensions)
+            {
+                string candidate = fullPath + extension;
+                if (File.Exists(candidate))
+                {
+                    return Path.GetFullPath(candidate);
+                }
+            }
+
+            return null;
+        }
+
+        private static bool EndsWithPathExtension(string fullPath, string[] extensions)
+        {
+            foreach (string extension in extensions)
+            {
+                if (fullPath.EndsWith(extension, StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static string[] GetPathExtensions()
+        {
+            string? pathExt = Environment.GetEnvironmentVariable("PATHEXT");
+            if (string.IsNullOrEmpty(pathExt))
+            {
+                pathExt = ".COM;.EXE;.BAT;.CMD";
+            }
+
+            return pathExt.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
         internal static int GetShowWindowFromWindowStyle(ProcessWindowStyle windowStyle) => windowStyle switch
         {
             ProcessWindowStyle.Hidden => Interop.Shell32.SW_HIDE,

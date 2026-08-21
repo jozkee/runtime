@@ -24,6 +24,49 @@ namespace System.Diagnostics
         private static bool IsExecutable(string fullPath)
             => Interop.Sys.Access(fullPath, Interop.Sys.AccessMode.X_OK) == 0 && !Directory.Exists(fullPath);
 
+        internal static string? ResolveExecutablePath(string fileName)
+        {
+            // A path that contains a directory component is resolved relative to the current
+            // directory; PATH is not searched.
+            if (fileName.AsSpan().IndexOf('/') >= 0)
+            {
+                string fullPath = Path.GetFullPath(fileName);
+                return IsExecutable(fullPath) ? fullPath : null;
+            }
+
+            // A bare file name is resolved using the same search as Process.Start:
+            // the executable's directory, then the current directory, then PATH.
+            string? found = ProbeExecutable(fileName);
+            return found is null ? null : Path.GetFullPath(found);
+        }
+
+        // Searches for a bare executable name using the same order as Process.Start: the
+        // executable's own directory, then the current directory, then each directory in PATH.
+        private static string? ProbeExecutable(string fileName)
+        {
+            string? processPath = Environment.ProcessPath;
+            if (processPath != null)
+            {
+                try
+                {
+                    string candidate = Path.Combine(Path.GetDirectoryName(processPath)!, fileName);
+                    if (IsExecutable(candidate))
+                    {
+                        return candidate;
+                    }
+                }
+                catch (ArgumentException) { } // ignore any errors in data that may come from the exe path
+            }
+
+            string cwdCandidate = Path.Combine(Directory.GetCurrentDirectory(), fileName);
+            if (IsExecutable(cwdCandidate))
+            {
+                return cwdCandidate;
+            }
+
+            return FindProgramInPath(fileName);
+        }
+
         internal static unsafe void EnsureInitialized()
         {
             if (s_initialized)
@@ -303,30 +346,8 @@ namespace System.Diagnostics
                 return filename;
             }
 
-            // Then check the executable's directory
-            string? path = Environment.ProcessPath;
-            if (path != null)
-            {
-                try
-                {
-                    path = Path.Combine(Path.GetDirectoryName(path)!, filename);
-                    if (IsExecutable(path))
-                    {
-                        return path;
-                    }
-                }
-                catch (ArgumentException) { } // ignore any errors in data that may come from the exe path
-            }
-
-            // Then check the current directory
-            path = Path.Combine(Directory.GetCurrentDirectory(), filename);
-            if (IsExecutable(path))
-            {
-                return path;
-            }
-
-            // Then check each directory listed in the PATH environment variables
-            return FindProgramInPath(filename);
+            // Otherwise search the executable's directory, the current directory, and PATH.
+            return ProbeExecutable(filename);
         }
 
         /// <summary>Parses a command-line argument string into a list of arguments.</summary>

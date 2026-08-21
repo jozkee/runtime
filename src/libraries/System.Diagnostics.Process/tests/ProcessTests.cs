@@ -683,6 +683,128 @@ namespace System.Diagnostics.Tests
             }, path, options).Dispose();
         }
 
+        [Fact]
+        public void ResolveExecutablePath_NullOrEmpty_Throws()
+        {
+            AssertExtensions.Throws<ArgumentNullException>("fileName", () => Process.ResolveExecutablePath(null));
+            AssertExtensions.Throws<ArgumentException>("fileName", () => Process.ResolveExecutablePath(string.Empty));
+        }
+
+        [Fact]
+        public void ResolveExecutablePath_NonExistentBareName_ReturnsNull()
+        {
+            Assert.Null(Process.ResolveExecutablePath("does-not-exist-" + Guid.NewGuid().ToString("N")));
+        }
+
+        [Fact]
+        public void ResolveExecutablePath_PathWithDirectoryComponent_ResolvesWithoutSearchingPath()
+        {
+            string dir = Path.Combine(TestDirectory, GetTestFileName());
+            Directory.CreateDirectory(dir);
+            string scriptFile = WriteScriptFile(dir, "tool", returnValue: 0);
+
+            // A path that includes a directory component resolves directly to the file.
+            Assert.Equal(Path.GetFullPath(scriptFile), Process.ResolveExecutablePath(scriptFile));
+
+            // A non-existent path with a directory component returns null rather than searching PATH.
+            Assert.Null(Process.ResolveExecutablePath(Path.Combine(dir, "does-not-exist")));
+        }
+
+        [ConditionalFact(typeof(RemoteExecutor), nameof(RemoteExecutor.IsSupported))]
+        public void ResolveExecutablePath_BareName_SearchesPath()
+        {
+            string path = Path.Combine(TestDirectory, "ResolvePath");
+            Directory.CreateDirectory(path);
+
+            RemoteInvokeOptions options = new RemoteInvokeOptions();
+            options.StartInfo.EnvironmentVariables["PATH"] = path;
+            // Ensure a deterministic PATHEXT so a bare name resolves to the .bat produced on Windows.
+            options.StartInfo.EnvironmentVariables["PATHEXT"] = ".BAT;.CMD;.EXE";
+
+            RemoteExecutor.Invoke(pathDirectory =>
+            {
+                // On Windows this writes "resolvetool.bat"; on Unix it writes an executable "resolvetool".
+                // In both cases the bare name "resolvetool" must resolve to the created file via PATH
+                // (and PATHEXT on Windows).
+                string scriptFile = WriteScriptFile(pathDirectory, "resolvetool", returnValue: 0);
+
+                string? resolved = Process.ResolveExecutablePath("resolvetool");
+                Assert.NotNull(resolved);
+                // On Windows the returned extension casing follows PATHEXT and paths are case-insensitive.
+                Assert.Equal(Path.GetFullPath(scriptFile), resolved, ignoreCase: OperatingSystem.IsWindows());
+
+                Assert.Null(Process.ResolveExecutablePath("resolvetool-missing"));
+
+                return RemoteExecutor.SuccessExitCode;
+            }, path, options).Dispose();
+        }
+
+        [ConditionalFact(typeof(RemoteExecutor), nameof(RemoteExecutor.IsSupported))]
+        public void ResolveExecutablePath_BareName_FoundInCurrentDirectory()
+        {
+            // PATH points at an empty directory so a bare-name match can only come from the
+            // current directory. This verifies the resolver probes the current directory on all
+            // platforms, matching the search Process.Start performs.
+            string emptyPathDir = Path.Combine(TestDirectory, "EmptyPath");
+            Directory.CreateDirectory(emptyPathDir);
+            string wd = Path.Combine(TestDirectory, "ResolveCwd");
+            Directory.CreateDirectory(wd);
+
+            RemoteInvokeOptions options = new RemoteInvokeOptions();
+            options.StartInfo.EnvironmentVariables["PATH"] = emptyPathDir;
+            options.StartInfo.EnvironmentVariables["PATHEXT"] = ".BAT;.CMD;.EXE";
+            options.StartInfo.WorkingDirectory = wd;
+
+            RemoteExecutor.Invoke(() =>
+            {
+                // Write the script into the current directory only (it is not on PATH).
+                string scriptFile = WriteScriptFile(Directory.GetCurrentDirectory(), "cwdtool", returnValue: 0);
+
+                string? resolved = Process.ResolveExecutablePath("cwdtool");
+                Assert.NotNull(resolved);
+                Assert.Equal(Path.GetFullPath(scriptFile), resolved, ignoreCase: OperatingSystem.IsWindows());
+
+                return RemoteExecutor.SuccessExitCode;
+            }, options).Dispose();
+        }
+
+        [ConditionalFact(typeof(RemoteExecutor), nameof(RemoteExecutor.IsSupported))]
+        public void ResolveExecutablePath_BareName_FoundInExecutableDirectory()
+        {
+            // PATH and the working directory both point at empty directories, so a bare-name match
+            // can only come from the executable's own directory. This verifies the resolver probes
+            // that directory on all platforms, matching the search Process.Start performs.
+            string emptyPathDir = Path.Combine(TestDirectory, "ExeDirEmptyPath");
+            Directory.CreateDirectory(emptyPathDir);
+            string wd = Path.Combine(TestDirectory, "ExeDirWorkingDir");
+            Directory.CreateDirectory(wd);
+
+            RemoteInvokeOptions options = new RemoteInvokeOptions();
+            options.StartInfo.EnvironmentVariables["PATH"] = emptyPathDir;
+            options.StartInfo.EnvironmentVariables["PATHEXT"] = ".BAT;.CMD;.EXE";
+            options.StartInfo.WorkingDirectory = wd;
+
+            RemoteExecutor.Invoke(() =>
+            {
+                string exeDir = Path.GetDirectoryName(Environment.ProcessPath)!;
+                // Unique name to avoid collisions with parallel remote processes sharing the host directory.
+                string name = "exedirtool_" + Guid.NewGuid().ToString("N");
+                string scriptFile = WriteScriptFile(exeDir, name, returnValue: 0);
+                try
+                {
+                    string? resolved = Process.ResolveExecutablePath(name);
+                    Assert.NotNull(resolved);
+                    Assert.Equal(Path.GetFullPath(scriptFile), resolved, ignoreCase: OperatingSystem.IsWindows());
+                }
+                finally
+                {
+                    File.Delete(scriptFile);
+                }
+
+                return RemoteExecutor.SuccessExitCode;
+            }, options).Dispose();
+        }
+
         [ConditionalFact(typeof(PlatformDetection), nameof(PlatformDetection.IsNotWindowsServerCore),
             nameof(PlatformDetection.IsNotWindowsNanoServer), nameof(PlatformDetection.IsNotWindowsIoTCore),
             nameof(PlatformDetection.IsNotAppSandbox))]

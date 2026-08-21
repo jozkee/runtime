@@ -79,6 +79,73 @@ namespace System.Diagnostics.Tests
             File.WriteAllText(filename, $"exit {returnValue}");
             return filename;
         }
+
+        [ConditionalFact(typeof(RemoteExecutor), nameof(RemoteExecutor.IsSupported))]
+        public void ResolveExecutablePath_PrefersPathExtMatchOverExtensionlessFile()
+        {
+            string dir = Path.Combine(TestDirectory, "PathExt");
+            Directory.CreateDirectory(dir);
+
+            RemoteInvokeOptions options = new RemoteInvokeOptions();
+            options.StartInfo.EnvironmentVariables["PATHEXT"] = ".BAT;.CMD;.EXE";
+
+            RemoteExecutor.Invoke(directory =>
+            {
+                // A directory-component path avoids the PATH/current-directory search so that only
+                // PATHEXT resolution is exercised here.
+                string toolNoExt = Path.Combine(directory, "tool");
+                File.WriteAllText(toolNoExt, "not launchable"); // extensionless file, not launchable by that name
+                string toolBat = toolNoExt + ".bat";
+                File.WriteAllText(toolBat, "exit 0");
+
+                // An extensionless input resolves to the PATHEXT match, not the bare extensionless file.
+                Assert.Equal(Path.GetFullPath(toolBat), Process.ResolveExecutablePath(toolNoExt), ignoreCase: true);
+
+                // An input that already carries an extension resolves to that exact file.
+                Assert.Equal(Path.GetFullPath(toolBat), Process.ResolveExecutablePath(toolBat), ignoreCase: true);
+
+                // An extensionless file with no PATHEXT sibling is not treated as launchable.
+                string lonely = Path.Combine(directory, "lonely");
+                File.WriteAllText(lonely, "not launchable");
+                Assert.Null(Process.ResolveExecutablePath(lonely));
+
+                return RemoteExecutor.SuccessExitCode;
+            }, dir, options).Dispose();
+        }
+
+        [ConditionalFact(typeof(RemoteExecutor), nameof(RemoteExecutor.IsSupported))]
+        public void ResolveExecutablePath_DottedStem_AppliesPathExt()
+        {
+            string dir = Path.Combine(TestDirectory, "DottedStem");
+            Directory.CreateDirectory(dir);
+
+            RemoteInvokeOptions options = new RemoteInvokeOptions();
+            options.StartInfo.EnvironmentVariables["PATHEXT"] = ".COM;.EXE;.BAT;.CMD";
+
+            RemoteExecutor.Invoke(directory =>
+            {
+                // "python3.11" ends with ".11", which is not a PATHEXT extension, so PATHEXT is applied
+                // rather than treating ".11" as the executable extension. Matches where.exe / which.
+                string dottedBat = Path.Combine(directory, "python3.11.bat");
+                File.WriteAllText(dottedBat, "exit 0");
+                Assert.Equal(Path.GetFullPath(dottedBat), Process.ResolveExecutablePath(Path.Combine(directory, "python3.11")), ignoreCase: true);
+
+                // When both the bare non-PATHEXT file and a PATHEXT sibling exist, the PATHEXT sibling
+                // (the launchable one) is returned, not the bare file.
+                string dataNonExt = Path.Combine(directory, "data.11");
+                File.WriteAllText(dataNonExt, "not launchable");
+                string dataBat = Path.Combine(directory, "data.11.bat");
+                File.WriteAllText(dataBat, "exit 0");
+                Assert.Equal(Path.GetFullPath(dataBat), Process.ResolveExecutablePath(dataNonExt), ignoreCase: true);
+
+                // A file whose extension is not in PATHEXT and has no PATHEXT sibling is not launchable.
+                string readme = Path.Combine(directory, "readme.md");
+                File.WriteAllText(readme, "text");
+                Assert.Null(Process.ResolveExecutablePath(readme));
+
+                return RemoteExecutor.SuccessExitCode;
+            }, dir, options).Dispose();
+        }
         
         private static void SendSignal(PosixSignal signal, Process process, bool entireProcessGroup = false)
         {

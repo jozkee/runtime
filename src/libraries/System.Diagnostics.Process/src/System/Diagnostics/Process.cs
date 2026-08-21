@@ -1477,6 +1477,36 @@ namespace System.Diagnostics
             return true;
         }
 
+        /// <summary>
+        /// Resolves the full path of an executable by applying the operating system's executable
+        /// search rules, without starting a process.
+        /// </summary>
+        /// <param name="fileName">
+        /// The name of the executable to locate. This can be a bare file name (for example <c>"dotnet"</c>),
+        /// a relative path, or a fully qualified path.
+        /// </param>
+        /// <returns>
+        /// The fully qualified path of the first matching executable, or <see langword="null"/> if no match is found.
+        /// </returns>
+        /// <remarks>
+        /// <para>
+        /// On Windows, the search uses the <c>PATH</c> and <c>PATHEXT</c> environment variables, so executables
+        /// and scripts such as <c>.cmd</c> or <c>.bat</c> are located even when <paramref name="fileName"/> has no
+        /// extension. On Unix, the search uses the <c>PATH</c> environment variable and requires the file to have
+        /// execute permission.
+        /// </para>
+        /// <para>
+        /// When <paramref name="fileName"/> contains a directory component, it is resolved relative to the current
+        /// working directory and the <c>PATH</c> environment variable is not searched.
+        /// </para>
+        /// </remarks>
+        /// <exception cref="ArgumentException"><paramref name="fileName"/> is <see langword="null"/> or an empty string.</exception>
+        public static string? ResolveExecutablePath(string fileName)
+        {
+            ArgumentException.ThrowIfNullOrEmpty(fileName);
+            return ProcessUtils.ResolveExecutablePath(fileName);
+        }
+
         /// <devdoc>
         ///    <para>
         ///       Starts a process resource by specifying the name of a
